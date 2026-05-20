@@ -692,24 +692,36 @@ def apply_chart_theme(fig):
 # ==========================================================
 def calculate_weekly_streak(df: pd.DataFrame, runner_name: str) -> int:
     runner_df = df[df["runner_name"] == runner_name].copy()
+
     if runner_df.empty:
         return 0
 
-    runner_df["week_start"] = runner_df["date"].dt.to_period("W").apply(
-        lambda p: p.start_time
-    )
-    active_weeks = sorted(runner_df["week_start"].unique(), reverse=True)
+    runner_df["date"] = pd.to_datetime(runner_df["date"], errors="coerce")
+    runner_df = runner_df.dropna(subset=["date"])
 
-    if len(active_weeks) == 0:
+    if runner_df.empty:
+        return 0
+
+    runner_df["week_start"] = runner_df["date"].dt.to_period("W").dt.start_time
+
+    active_weeks = sorted(
+        pd.to_datetime(runner_df["week_start"].dropna().unique()),
+        reverse=True,
+    )
+
+    if not active_weeks:
         return 0
 
     streak = 1
+
     for i in range(1, len(active_weeks)):
-        diff = (active_weeks[i - 1] - active_weeks[i]).days
-        if diff <= 7:
+        diff_days = (pd.Timestamp(active_weeks[i - 1]) - pd.Timestamp(active_weeks[i])).days
+
+        if diff_days <= 7:
             streak += 1
         else:
             break
+
     return streak
 
 
